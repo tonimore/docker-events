@@ -1,18 +1,22 @@
 # Systemd service for run user actions on docker container starts 
-[README_RU.md](Русская версия)
+[Русская версия](README_RU.md)
 
 ## Common Info
 
-Sometimes it need to add routes to the container. It often neccessary for containers that have two or more network interfaces. Especiality if it is rootless and doesn't use custom init system like [https://github.com/just-containers/s6-overlay](s6-overlay) and so on.
+Sometimes it need to add routes to the container. It often neccessary for containers that have two or more network interfaces. Especiality if it is rootless and doesn't use custom init system like [s6-overlay](https://github.com/just-containers/s6-overlay) and so on.
 
 In this case it impossible to add routes neither during container create nor after it was started (inside container)  
 
 So the only way to add routes to the running container is to run some script on the host after container started.
 
 It usually can be done with next command:
-```docker exec -u 0 <container> <command>```
+```
+docker exec -u 0 <container> <command>
+```
 or
-```nsenter -n -t $(docker inspect --format {{.State.Pid}} <container>) <command>```
+```
+nsenter -n -t $(docker inspect --format {{.State.Pid}} <container>) <command>
+```
 
 To track container start events common used ```docker events```
 
@@ -34,8 +38,9 @@ This method is convenient because you can execute **any** commands when the cont
 ## Installation
 
 The service acts as systemd service and can be installed with:
-
-$ docker_events.sh --instal
+```
+$ docker_events.sh --install
+```
 
 ## Configuration
 
@@ -77,8 +82,7 @@ services:
       docker-events.route: "delete default;add default via 33.156.88.1;add 10.0.0.0/8 via 172.20.20.1;add 192.168.0.0/16 via 172.20.20.1" 
 
 ```
-После запуска контейнра будут выполенены следующие команды:
-
+In our example, after starting the container, the following commands will be executed:
 ```
 nsenter ... ip route delete default
 nsenter ... ip route add default via 33.156.88.1
