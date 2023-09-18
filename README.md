@@ -16,10 +16,8 @@ or
 ```
 nsenter -n -t $(docker inspect --format {{.State.Pid}} <container>) <command>
 ```
-
 To track container start events common used ```docker events```
-
-So here is simple service that will do that.
+So here is a simple service that will do that.
 
 ## How it works
 
@@ -28,11 +26,11 @@ Service use ```docker events``` to catch container start events. Then it do a co
 1: Checks container's Labels for "docker-events.route" label. Takes it value, split to parts by semicolon and pass every part to the command:  
 ```nsenter -n -t $(docker inspect --format {{.State.Pid}} <container>) ip route <value>```
 
-This method is useful because we can keep routes together with the container. Actially in the docker-compose.yaml See example bellow.
+This method is useful because we can keep routes together with the container, actially in the docker-compose.yaml. See example bellow.
 
-2: Finds user defined ищет пользовательский скрипт с именем start.<container> и выполняет его
+2: Finds user defined script named start.<container> and executes it
 
-This method is convenient because you can execute **any** commands when the container starts, not only add routes
+This method is convenient because you can execute **any** commands when the container starts, not only add routes.
 
 ## Installation
 
@@ -51,7 +49,7 @@ All the necessary variables set in the begining of the script, but usually they 
 version: "3.8"
 networks:
   wan:
-    # In this example we create IPVLAN L2 network
+    # In this example we create IPVLAN L2 network that connected to eth1 interface 
     driver: ipvlan
     driver_opts:
       parent: eth1
@@ -60,23 +58,20 @@ networks:
       - subnet: 33.156.88.0/24
         gateway: 33.156.88.1
         ip_range: 33.156.88.128/25
-  lan: 
+  lan:
+    # just regular user-defined bridge
     driver: bridge
     ipam:
       config:
       - subnet: 172.20.20.0/24
-
 services:
   dualnet:
     image: someimage:latest
-
     ports:
       - "4000:4000"
-
     networks: 
       wan:
       lan:
-    
     labels: 
       docker-events.route: "delete default;add default via 33.156.88.1;add 10.0.0.0/8 via 172.20.20.1;add 192.168.0.0/16 via 172.20.20.1" 
 
