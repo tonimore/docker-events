@@ -5,9 +5,8 @@
 
 Sometimes it need to add routes to the container. It often neccessary for containers that have two or more network interfaces. Especiality if it is rootless and doesn't use custom init system like [s6-overlay](https://github.com/just-containers/s6-overlay) and so on.
 
-In this case it impossible to add routes neither during container create nor after it was started (inside container)  
-
-So the only way to add routes to the running container is to run some script on the host after container started.
+In this case it impossible to add routes neither during container create nor after it was started (inside container).
+So the only way to add routes to the running container is to run some script on the host after the container has started.
 
 It usually can be done with next command:
 ```
