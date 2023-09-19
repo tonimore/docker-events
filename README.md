@@ -45,7 +45,7 @@ All the necessary variables are set at the beginning of the script, but they don
 
 ## Example of docker-compose.yaml
 
-```
+``` yaml
 version: "3.8"
 networks:
   wan:
