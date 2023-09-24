@@ -9,7 +9,7 @@ Also, with a complex configuration, it may be necessary to reconfigure IP addres
 
 In this case it is impossible to add routes either during container create or after it was started (inside container).
 
-So the only way to add routes to the running container is to run some script on the host after the container has started.
+So the only way to add routes to the running container or reconfigure IP addresses is to run some script on the host after the container has started.
 
 It can usually be done with following command:
 ```
