@@ -3,7 +3,7 @@
 # Absolute or relative path to the user defined scripts. It is usually the script directory.
 scripts_dir=.
 
-version=1.1
+version=1.2
 app_name="Docker Events Handler"
 
 # ==================  Options bellow usually don't need to be changed ==============
@@ -48,53 +48,55 @@ Usage: $0 -c client_name [--install] [--service] [--version]
 # This function handle the system service
 service() {
 
-    # Scripts must be executables and named: event.name
-    
-    docker events --filter type=container --filter event=start --format '{{.Status}}.{{.Actor.Attributes.name}}' --since=15s | while read name; do
-        echo Event has been catched: $name
+    # In case docker was stopped we will continue to try read it events in endless loop
+    while true; do
+        docker events --filter type=container --filter event=start --format '{{.Status}}.{{.Actor.Attributes.name}}' --since=15s | while read name; do
+            echo Event has been catched: $name
 
-        # check for container labels fist
-        coname=$(echo $name | cut -d. -f2)
-        
+            # check for container labels fist
+            coname=$(echo $name | cut -d. -f2)
+            
 
-        # getting for IP address labels
-        values=$(docker inspect $coname --format '{{ index .Config.Labels "docker-events.address" }}')
-        
-        if [ ! -z "$values" ]; then
-            coPID=$(docker inspect --format {{.State.Pid}} $coname)
+            # getting for IP address labels
+            values=$(docker inspect $coname --format '{{ index .Config.Labels "docker-events.address" }}')
+            
+            if [ ! -z "$values" ]; then
+                coPID=$(docker inspect --format {{.State.Pid}} $coname)
 
-            IFS=$splitter
-            for val in $values; do
-                echo "$coname: Found container assigned ip-address-label and applying it: $val"
-                cmd="nsenter -n -t $coPID ip address $val"
-                sh -c "$cmd"
-            done
-        fi
+                IFS=$splitter
+                for val in $values; do
+                    echo "$coname: Found container assigned ip-address-label and applying it: $val"
+                    cmd="nsenter -n -t $coPID ip address $val"
+                    sh -c "$cmd"
+                done
+            fi
 
-        # getting for route labels
-        values=$(docker inspect $coname --format '{{ index .Config.Labels "docker-events.route" }}')
-        
-        if [ ! -z "$values" ]; then
-            coPID=$(docker inspect --format {{.State.Pid}} $coname)
+            # getting for route labels
+            values=$(docker inspect $coname --format '{{ index .Config.Labels "docker-events.route" }}')
+            
+            if [ ! -z "$values" ]; then
+                coPID=$(docker inspect --format {{.State.Pid}} $coname)
 
-            IFS=$splitter
-            for routestr in $values; do
-                echo "$coname: Found container assigned route-label and applying it: $routestr"
-                cmd="nsenter -n -t $coPID ip route $routestr"
-                sh -c "$cmd"
-            done
-        fi
+                IFS=$splitter
+                for routestr in $values; do
+                    echo "$coname: Found container assigned route-label and applying it: $routestr"
+                    cmd="nsenter -n -t $coPID ip route $routestr"
+                    sh -c "$cmd"
+                done
+            fi
 
-        # check for user defined scripts
-        if [ -f $scripts_dir/$name ]; then
-            echo "$coname: Found and running event handler: $scripts_dir/$name"
-            $scripts_dir/$name
-        else
-            echo "Event handler was not found and skipped: $scripts_dir/$name"
-        fi
+            # check for user defined scripts
+            # Scripts must be executables and named: event.name
+            if [ -f $scripts_dir/$name ]; then
+                echo "$coname: Found and running event handler: $scripts_dir/$name"
+                $scripts_dir/$name
+            else
+                echo "Event handler was not found and skipped: $scripts_dir/$name"
+            fi
+        done
+        sleep 5
     done
-    exit 0
-}
+}   
 # END OF service()
 
 
@@ -110,11 +112,12 @@ After=docker.service
 [Service]
 # For old version systemd Type it must be exec
 #Type=exec
+Type=simple
 
 ExecStart=$maindir/$mainfile --service
 
 Restart=on-failure
-RestartSec=10
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
@@ -146,7 +149,10 @@ Show logs:
 }
 # END OF install()
 
-
+exit_function() {
+    echo "Exiting by external signal..."
+    exit
+}
 # ====================== Main Code section ============================
 
 # Check arguments
@@ -170,6 +176,8 @@ echo $app_name, v$version
 echo Scripts Directory: $(realpath $scripts_dir)
 
 $doinstall && install && exit
+trap "exit_function" SIGINT SIGTERM
+
+echo Running events monitor...
 $doservice && service && exit
 
-#[[ $error == 1 ]] && echo "Error(s) occured. Aborted." && exit 1
