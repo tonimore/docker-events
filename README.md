@@ -32,7 +32,10 @@ The service uses ```docker events``` to catch container start events. Then it do
 2: It checks container's labels for "docker-events.route" label, takes its value, splits it into parts with semicolon and passes every part to the command:  
 ```nsenter -n -t $(docker inspect --format {{.State.Pid}} <container>) ip route <value>```
 
-Thouse methods are useful because we can keep routes together with the container, right in the docker-compose.yaml. See example bellow.
+2a: It checks container's labels for "docker-events.host-route" label, takes its value, splits it into parts with semicolon and passes every part to the command:  
+```ip route <value>```, so routes will be added on the host
+
+Thouse methods are useful because we can keep routes configuration together with the container, right in the docker-compose.yaml. See example bellow.
 
 3: It finds user-defined script named "start.<container>" and executes it
 
@@ -82,7 +85,9 @@ services:
       # Add secondary IP addfress to the interface
       docker-events.address: "add 10.0.1.4/16 dev eth0"   
       # change default gateway and add routes
-      docker-events.route: "delete default;add default via 33.156.88.1;add 10.0.0.0/8 via 172.20.20.1;add 192.168.0.0/16 via 172.20.20.1" 
+      docker-events.route: "delete default;add default via 33.156.88.1;add 10.0.0.0/8 via 172.20.20.1;add 192.168.0.0/16 via 172.20.20.1"
+      # here we recreate host routes (not the container) based on enviroment variables: for example VPN_IP=10.0.8.0 INT_IF_IP=172.20.20.1
+      docker-events.host-route: "delete $VPN_IP/26;add $VPN_IP/16 via $INT_IF_IP"
 
 ```
 In our example, after the start of the container, the following commands will be executed:
@@ -92,5 +97,7 @@ nsenter ... ip route delete default
 nsenter ... ip route add default via 33.156.88.1
 nsenter ... ip route add 10.0.0.0/8 via 172.20.20.1
 nsenter ... ip route add 192.168.0.0/16 via 172.20.20.1
+delete 10.0.8.0/16 
+add 10.0.8.0/16  via 172.20.20.1
 ```
 

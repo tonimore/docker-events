@@ -3,7 +3,7 @@
 # Absolute or relative path to the user defined scripts. It is usually the script directory.
 scripts_dir=.
 
-version=1.2
+version=1.3
 app_name="Docker Events Handler"
 
 # ==================  Options bellow usually don't need to be changed ==============
@@ -57,7 +57,7 @@ service() {
             coname=$(echo $name | cut -d. -f2)
             
 
-            # getting for IP address labels
+            # getting IP address labels
             values=$(docker inspect $coname --format '{{ index .Config.Labels "docker-events.address" }}')
             
             if [ ! -z "$values" ]; then
@@ -71,7 +71,7 @@ service() {
                 done
             fi
 
-            # getting for route labels
+            # getting route labels
             values=$(docker inspect $coname --format '{{ index .Config.Labels "docker-events.route" }}')
             
             if [ ! -z "$values" ]; then
@@ -81,6 +81,18 @@ service() {
                 for routestr in $values; do
                     echo "$coname: Found container assigned route-label and applying it: $routestr"
                     cmd="nsenter -n -t $coPID ip route $routestr"
+                    sh -c "$cmd"
+                done
+            fi
+
+            # getting host route labels
+            values=$(docker inspect $coname --format '{{ index .Config.Labels "docker-events.host-route" }}')
+            
+            if [ ! -z "$values" ]; then
+                IFS=$splitter
+                for routestr in $values; do
+                    echo "$coname: Found container assigned host-route-label and applying it: $routestr"
+                    cmd="ip route $routestr"
                     sh -c "$cmd"
                 done
             fi
