@@ -1,9 +1,10 @@
-#!/bin/bash
+#!/bin/sh
 
 # Absolute or relative path to the user defined scripts. It is usually the script directory.
-scripts_dir=.
+: "${scripts_dir:=.}"
 
-version=1.3
+
+version=1.5
 app_name="Docker Events Handler"
 
 # ==================  Options bellow usually don't need to be changed ==============
@@ -18,7 +19,7 @@ mainfile=docker_events.sh
 # char used for split label docker-events.route to separated routes.
 splitter=";"
 
-# =======================   END OF Options  ====================== 
+# =======================   END OF Options  ======================
 
 # Check that dependics are availble
 dependics="realpath id nsenter docker"
@@ -47,15 +48,20 @@ Usage: $0 -c client_name [--install] [--service] [--version]
 
 # This function handle the system service
 service() {
-
+    # try to detect our own contaner name
+    selfconame=$(basename $(docker inspect $(cat /etc/hostname)  --format '{{ index .Name }}' 2>/dev/null))
+    
     # In case docker was stopped we will continue to try read it events in endless loop
     while true; do
         docker events --filter type=container --filter event=start --format '{{.Status}}.{{.Actor.Attributes.name}}' --since=15s | while read name; do
+
             echo Event has been catched: $name
 
             # check for container labels fist
             coname=$(echo $name | cut -d. -f2)
             
+            # skip ourself events
+            [[ "$coname" == "$selfconame" ]] && continue
 
             # getting IP address labels
             values=$(docker inspect $coname --format '{{ index .Config.Labels "docker-events.address" }}')
@@ -85,16 +91,33 @@ service() {
                 done
             fi
 
-            # getting host route labels
-            values=$(docker inspect $coname --format '{{ index .Config.Labels "docker-events.host-route" }}')
+            # getting rules labels
+            values=$(docker inspect $coname --format '{{ index .Config.Labels "docker-events.rule" }}')
             
             if [ ! -z "$values" ]; then
+                coPID=$(docker inspect --format {{.State.Pid}} $coname)
+
                 IFS=$splitter
                 for routestr in $values; do
-                    echo "$coname: Found container assigned host-route-label and applying it: $routestr"
-                    cmd="ip route $routestr"
+                    echo "$coname: Found container assigned rule-label and applying it: $routestr"
+                    cmd="nsenter -n -t $coPID ip rule $routestr"
                     sh -c "$cmd"
                 done
+            fi
+
+            # getting host route labels 
+            values=$(docker inspect $coname --format '{{ index .Config.Labels "docker-events.host-route" }}')
+            if [ ! -z "$values" ]; then
+                if [ -z $in_docker ]; then
+                    IFS=$splitter
+                    for routestr in $values; do
+                        echo "$coname: Found container assigned host-route-label and applying it: $routestr"
+                        cmd="ip route $routestr"
+                        sh -c "$cmd"
+                    done
+                else
+                    echo "Error! $coname: host-route-label is not supported if Docker Event Handler running in the container"
+                fi
             fi
 
             # check for user defined scripts
