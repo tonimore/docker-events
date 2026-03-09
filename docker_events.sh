@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Absolute or relative path to the user defined scripts. It is usually the script directory.
 : "${scripts_dir:=.}"
@@ -58,7 +58,7 @@ service() {
             echo Event has been catched: $name
 
             # check for container labels fist
-            coname=$(echo $name | cut -d. -f2)
+			coname="${name#*.}"
             
             # skip ourself events
             [[ "$coname" == "$selfconame" ]] && continue
