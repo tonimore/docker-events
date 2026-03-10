@@ -42,7 +42,7 @@ ip route add 10.0.0.0/8 via 172.20.20.1
 2a: It checks container's labels for "docker-events.host-route" label, takes its value, splits it into parts with semicolon and passes every part to the command:  
 ```ip route <value>```, so routes will be added on the host
 
-For example, label `docker-events.host-route: "delete $VPN_IP/26;add $VPN_IP/16 via $INT_IF_IP"` will run inside the container (of course, it assumed that $VPN and $INT_IF_IP are set):
+For example, label `docker-events.host-route: "delete $VPN_IP/26;add $VPN_IP/16 via $INT_IF_IP"` will run at the HOST itself (of course, it assumed that $VPN and $INT_IF_IP are set):
 
 ```
 ip route delete $VPN
@@ -56,6 +56,7 @@ Thouse methods are useful because we can keep routes configuration together with
 Currently, the following commands are supported via labels: docker-events.xxxxx:
 - ip address ...
 - ip route ...
+- ip host-route ...
 - ip rule ...
 
 but it is easy to add any others.
