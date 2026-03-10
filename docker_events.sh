@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Absolute or relative path to the user defined scripts. It is usually the script directory.
 : "${scripts_dir:=.}"
