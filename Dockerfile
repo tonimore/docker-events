@@ -2,6 +2,7 @@
 # run: docker run --rm --name=deh  --stop-signal=SIGKILL --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v /proc:/proc --privileged  dehandler
 
 FROM docker:27.5.0-cli-alpine3.21
+RUN apk add --no-cache bash
 RUN mkdir -p /app/scripts
 ENV scripts_dir=/app/scripts 
 ENV in_docker=1
